@@ -1,0 +1,116 @@
+# ==============================================================================
+# INOVEX — Comprehensive Git Ignore Configuration
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Python & Bytecode (Recursive across all apps and Model/ directory)
+# ------------------------------------------------------------------------------
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# ------------------------------------------------------------------------------
+# Virtual Environments
+# ------------------------------------------------------------------------------
+venv/
+env/
+ENV/
+.venv/
+.env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ------------------------------------------------------------------------------
+# Django Framework & Server Artifacts
+# ------------------------------------------------------------------------------
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+
+# ------------------------------------------------------------------------------
+# User Uploaded Media (Preserve media directory structure via .gitkeep)
+# ------------------------------------------------------------------------------
+media/*
+!media/.gitkeep
+
+# ------------------------------------------------------------------------------
+# Secrets & Environment Configurations
+# ------------------------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+.env.backup
+*.pem
+*.key
+*.cert
+*.crt
+dump.rdb
+
+# Never ignore the sanitized template
+!.env.example
+
+# ------------------------------------------------------------------------------
+# Asynchronous Celery & Redis Queues
+# ------------------------------------------------------------------------------
+celerybeat-schedule
+celerybeat-schedule.db
+celerybeat.pid
+
+# ------------------------------------------------------------------------------
+# Test Outputs, Generated Sample Reports & Audit Logs
+# ------------------------------------------------------------------------------
+sample_*.pdf
+sample_*.png
+final_*.pdf
+final_*.png
+*.coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Local Temporary Diagnostic & Audit Scripts
+audit_terms.py
+check_fields.py
+check_templates.py
+
+# ------------------------------------------------------------------------------
+# IDEs, Operating System & Editor Metadata
+# ------------------------------------------------------------------------------
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/

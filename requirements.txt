@@ -1,0 +1,28 @@
+# ==============================================================================
+# INOVEX — Core Platform Dependencies
+# Python 3.14+
+# ==============================================================================
+
+# Web Framework & REST API
+Django>=6.1,<6.2
+djangorestframework>=3.15,<4.0
+
+# Database & Environment
+PyMySQL>=1.1.0
+python-dotenv>=1.0.0
+
+# Asynchronous Task Queue & Broker
+celery>=5.4.0
+redis>=5.0.0
+
+# Document Extraction & PDF Report Generation
+pymupdf>=1.24.0
+reportlab>=4.2.0
+
+# Computer Vision & Numeric Processing
+numpy>=2.0.0
+pillow>=10.0.0
+onnxruntime>=1.20.0
+
+# Google Gemini Intelligence & RAG
+google-genai>=2.0.0

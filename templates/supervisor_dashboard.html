@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Maintenance Audit — INOVEX{% endblock %}
+{% block page_title %}Supervisor Audit Console{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h1 class="page-title mb-0">Supervisor Audit Console</h1>
+            <span class="badge-clean badge-clean-neutral font-monospace">INOVEX</span>
+        </div>
+        <p class="page-subtitle">Monitor factory maintenance inquiries, evaluate RAG grounding accuracy, and identify documentation gaps</p>
+    </div>
+    <div>
+        <span class="role-pill role-pill-supervisor">
+            <i class="bi bi-shield-check me-1"></i> Supervisor Audit
+        </span>
+    </div>
+</div>
+
+<!-- Metric Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-label">Total Queries Logged</div>
+            <div class="stat-value text-dark">{{ total_queries }}</div>
+            <div class="stat-meta">Factory maintenance inquiries</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-label">Grounded &amp; Answered</div>
+            <div class="stat-value text-success">{{ answered_count }}</div>
+            <div class="stat-meta">Verified manual evidence</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-label">Unanswered / Insufficient</div>
+            <div class="stat-value text-warning">{{ unanswered_count }}</div>
+            <div class="stat-meta">Flagged documentation gaps</div>
+        </div>
+    </div>
+</div>
+
+<!-- Unanswered Questions Panel (Documentation Gaps) -->
+<div class="card-table mb-4" style="border-top: 3px solid #d97706;">
+    <div class="card-table-header bg-light">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-exclamation-triangle text-warning"></i>
+            <h6 class="card-table-title">Identified Unanswered Questions (Documentation Gaps)</h6>
+        </div>
+        <span class="badge-clean badge-clean-warning">{{ unanswered_queries|length }} Pending Manual Updates</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table-saas">
+            <thead>
+                <tr>
+                    <th class="ps-3">Timestamp</th>
+                    <th>Machine</th>
+                    <th>Engineer</th>
+                    <th>Question Asked</th>
+                    <th>System Status</th>
+                    <th class="text-end pe-3">Report</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for q in unanswered_queries %}
+                    <tr>
+                        <td class="ps-3 small text-muted">{{ q.timestamp|date:"Y-m-d H:i" }}</td>
+                        <td><span class="badge-clean badge-clean-neutral font-monospace">{{ q.machine.machine_id }}</span></td>
+                        <td class="fw-semibold text-dark small">{{ q.user.username }}</td>
+                        <td class="text-dark small" style="max-width: 320px;">{{ q.question }}</td>
+                        <td><span class="badge-clean badge-clean-warning">Insufficient Evidence</span></td>
+                        <td class="text-end pe-3">
+                            <a href="/api/queries/{{ q.id }}/download-pdf/" class="btn-saas-secondary btn-saas-sm text-danger" title="Download Official Maintenance PDF Report" target="_blank">
+                                <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                            </a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted small">
+                            <i class="bi bi-check-circle text-success me-1"></i> No unanswered questions! All logged questions had sufficient manual coverage.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Complete Query Audit History -->
+<div class="card-table mb-4">
+    <div class="card-table-header">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-clock-history text-primary"></i>
+            <h6 class="card-table-title">Complete Maintenance Query Audit Log</h6>
+        </div>
+        <span class="badge-clean badge-clean-neutral">{{ recent_queries|length }} Recent Inquiries</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table-saas">
+            <thead>
+                <tr>
+                    <th class="ps-3">Date/Time</th>
+                    <th>User</th>
+                    <th>Machine</th>
+                    <th>Question</th>
+                    <th>Answer Excerpt</th>
+                    <th>Citations</th>
+                    <th>Status</th>
+                    <th class="text-end pe-3">Report</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for q in recent_queries %}
+                    <tr>
+                        <td class="ps-3 small text-muted text-nowrap">{{ q.timestamp|date:"M d, H:i" }}</td>
+                        <td class="fw-semibold text-dark small">{{ q.user.username }}</td>
+                        <td><span class="badge-clean badge-clean-neutral font-monospace">{{ q.machine.machine_id }}</span></td>
+                        <td class="small text-dark" style="max-width: 240px;">
+                            <div class="text-truncate" title="{{ q.question }}">{{ q.question }}</div>
+                        </td>
+                        <td class="small text-muted" style="max-width: 300px;">
+                            <div class="text-truncate" title="{{ q.answer }}">{{ q.answer }}</div>
+                        </td>
+                        <td>
+                            {% if q.citations %}
+                                <span class="badge-clean badge-clean-neutral font-monospace">{{ q.citations|length }} sources</span>
+                            {% else %}
+                                <span class="text-muted small">&mdash;</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if q.status == 'answered' %}
+                                <span class="badge-clean badge-clean-normal">Answered</span>
+                            {% else %}
+                                <span class="badge-clean badge-clean-warning">Insufficient</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-3">
+                            <a href="/api/queries/{{ q.id }}/download-pdf/" class="btn-saas-secondary btn-saas-sm text-danger" title="Download Official Maintenance PDF Report" target="_blank">
+                                <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                            </a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted small">No query logs recorded yet.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

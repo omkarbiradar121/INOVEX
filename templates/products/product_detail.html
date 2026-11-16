@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}Product {{ product.product_id }} — INOVEX{% endblock %}
+{% block page_title %}Product Specifications{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <h1 class="page-title mb-0">{{ product.name }}</h1>
+                    <span class="badge-clean {% if product.is_active %}badge-clean-normal{% else %}badge-clean-neutral{% endif %}">
+                        {% if product.is_active %}<i class="bi bi-check-circle-fill"></i> Active Line{% else %}<i class="bi bi-pause-circle"></i> Inactive{% endif %}
+                    </span>
+                </div>
+                <p class="page-subtitle">Product Line Identifier: <code class="fw-bold font-monospace">{{ product.product_id }}</code></p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'admin_dashboard' %}" class="btn-saas-secondary btn-saas-sm">
+                    <i class="bi bi-arrow-left me-1"></i> Dashboard
+                </a>
+                <a href="{% url 'product_edit' product.pk %}" class="btn-saas-primary btn-saas-sm">
+                    <i class="bi bi-pencil me-1"></i> Edit Product
+                </a>
+            </div>
+        </div>
+
+        <div class="stat-card p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-center pb-3 mb-3 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-cpu text-primary fs-5"></i>
+                    <h6 class="fw-bold mb-0 text-dark">Vision Inspection Specifications</h6>
+                </div>
+                <span class="badge-clean badge-clean-neutral font-monospace">{{ product.model_version }}</span>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <table class="table table-sm table-borderless small mb-0">
+                        <tr>
+                            <td class="text-muted fw-semibold" style="width: 45%;">Product ID:</td>
+                            <td><code class="fw-bold text-primary font-monospace">{{ product.product_id }}</code></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold">Commercial Name:</td>
+                            <td class="fw-semibold text-dark">{{ product.name }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold">Vision Classifier:</td>
+                            <td><span class="badge-clean badge-clean-neutral font-monospace">{{ product.model_version }}</span></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold">Target Classes:</td>
+                            <td>
+                                <span class="badge-clean badge-clean-normal me-1">Normal</span>
+                                <span class="badge-clean badge-clean-defective">Defective</span>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="col-md-6 border-start-md">
+                    <table class="table table-sm table-borderless small mb-0">
+                        <tr>
+                            <td class="text-muted fw-semibold" style="width: 45%;">Operating Status:</td>
+                            <td>
+                                {% if product.is_active %}
+                                    <span class="text-success fw-semibold"><i class="bi bi-check-circle-fill me-1"></i> Active for Inspection</span>
+                                {% else %}
+                                    <span class="text-muted fw-semibold"><i class="bi bi-pause-circle-fill me-1"></i> Inactive</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold">Registered By:</td>
+                            <td>{{ product.created_by.get_full_name|default:product.created_by.username|default:"System Admin" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold">Registration Date:</td>
+                            <td>{{ product.created_at|date:"Y-m-d H:i:s T" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold">Last Modified:</td>
+                            <td>{{ product.updated_at|date:"Y-m-d H:i:s T" }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="p-3 bg-light rounded border mb-4">
+                <div class="stat-label mb-2">Description / Manufacturing Notes</div>
+                <div class="small text-secondary" style="line-height: 1.5;">
+                    {{ product.description|default:"No additional manufacturing notes entered for this product line."|linebreaks }}
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                <form method="post" action="{% url 'product_toggle' product.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-warning btn-sm" style="font-size: 0.8125rem;">
+                        <i class="bi bi-arrow-repeat me-1"></i>
+                        {% if product.is_active %}Deactivate Product{% else %}Activate Product{% endif %}
+                    </button>
+                </form>
+
+                <form method="post" action="{% url 'product_delete' product.pk %}" onsubmit="return confirm('Are you sure you want to delete product {{ product.product_id }}?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger btn-sm" style="font-size: 0.8125rem;">
+                        <i class="bi bi-trash3 me-1"></i> Delete Product
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

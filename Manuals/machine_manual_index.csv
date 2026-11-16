@@ -1,0 +1,4 @@
+machine_id,document_id,title,revision,filename
+M-HP200,HP-OPS-01,HP200 Operations Manual,Rev 1.0,HP200_Operations_Rev1_0.pdf
+M-HP200,HP-MNT-01,HP200 Maintenance Manual,Rev 1.0,HP200_Maintenance_Rev1_0.pdf
+M-AC90,AC-OM-01,AC90 Operations and Maintenance Manual,Rev 1.0,AC90_Operations_Maintenance_Rev1_0.pdf

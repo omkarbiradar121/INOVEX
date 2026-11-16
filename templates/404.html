@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Page Not Found — INOVEX{% endblock %}
+{% block page_title %}Page Not Found{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center my-5">
+    <div class="col-md-7 col-lg-6 text-center">
+        <div class="stat-card p-5">
+            <div class="mb-3">
+                <div class="d-inline-flex p-3 rounded-circle bg-secondary-subtle text-secondary">
+                    <i class="bi bi-question-circle fs-1 text-primary"></i>
+                </div>
+            </div>
+            <h3 class="fw-bold text-dark mb-2">404 — Resource Not Found</h3>
+            <p class="text-secondary small mb-4" style="max-width: 440px; margin: 0 auto;">
+                The requested URL or operational record does not exist or has been relocated within the INOVEX platform.
+            </p>
+
+            <div class="d-flex justify-content-center gap-2">
+                <a href="{% url 'index_redirect' %}" class="btn btn-saas-primary btn-saas-sm px-4">
+                    <i class="bi bi-arrow-left me-1"></i> Return to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

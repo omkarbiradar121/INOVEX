@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block title %}Inspection Result {{ inspection.product.product_id }} — INOVEX{% endblock %}
+{% block page_title %}Inspection Result{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h1 class="page-title mb-0">Inspection Result</h1>
+            <span class="badge-clean {% if inspection.status == 'COMPLETED' %}badge-clean-normal{% elif inspection.status == 'FAILED' %}badge-clean-defective{% else %}badge-clean-neutral{% endif %}">
+                {{ inspection.get_status_display }}
+            </span>
+        </div>
+        <p class="page-subtitle">
+            Record ID: <code>INSP-{{ inspection.inspection_id|slice:":8" }}</code> &bull; Submitted by {{ inspection.engineer.get_full_name|default:inspection.engineer.username }}
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'single_inspection' %}" class="btn-saas-primary btn-saas-sm">
+            <i class="bi bi-camera me-1"></i> New Single Inspection
+        </a>
+        <a href="{% url 'engineer_history' %}" class="btn-saas-secondary btn-saas-sm">
+            <i class="bi bi-clock-history me-1"></i> Inspection History
+        </a>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Image Card -->
+    <div class="col-lg-6">
+        <div class="stat-card h-100 p-0 overflow-hidden d-flex flex-column">
+            <div class="px-3 py-2 border-bottom bg-light d-flex justify-content-between align-items-center">
+                <span class="small fw-semibold text-secondary">
+                    <i class="bi bi-image me-1 text-primary"></i> Uploaded Product Image
+                </span>
+                <span class="badge-clean badge-clean-neutral font-monospace small">{{ inspection.image_filename }}</span>
+            </div>
+            <div class="p-3 text-center d-flex flex-column justify-content-center align-items-center flex-grow-1" style="background-color: #0b0f19;">
+                {% if inspection.image %}
+                    <img src="{{ inspection.image.url }}" alt="Inspected Plate" class="img-fluid rounded border border-secondary shadow-sm" style="max-height: 440px; object-fit: contain;">
+                {% else %}
+                    <div class="text-secondary py-5">
+                        <i class="bi bi-image-slash fs-1 d-block mb-2"></i> No Image Stored
+                    </div>
+                {% endif %}
+            </div>
+            <div class="p-3 bg-white border-top small text-muted d-flex flex-wrap justify-content-between align-items-center">
+                <span>Resolution: <strong>{{ inspection.image_width|default:"--" }} &times; {{ inspection.image_height|default:"--" }} px</strong></span>
+                <span>Format: <strong>{{ inspection.image_format|default:"Unknown" }}</strong></span>
+                <span>Size: <strong>{{ inspection.file_size_bytes|filesizeformat }}</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prediction & Metrics Card -->
+    <div class="col-lg-6">
+        <div class="stat-card h-100 p-4 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex justify-content-between align-items-center pb-3 mb-3 border-bottom">
+                    <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-cpu text-primary"></i> AI Vision Model Decision
+                    </h6>
+                    <span class="badge-clean badge-clean-neutral font-monospace">{{ inspection.model_version }}</span>
+                </div>
+
+                {% if inspection.status == 'COMPLETED' %}
+                    <!-- Primary Decision Banner -->
+                    <div class="p-4 rounded text-center mb-4 {% if inspection.predicted_class == 'Defective' %}border border-danger-subtle bg-danger-subtle text-danger{% else %}border border-success-subtle bg-success-subtle text-success{% endif %}">
+                        <div class="small fw-bold text-uppercase mb-1" style="letter-spacing: 0.05em;">
+                            Predicted Quality Classification
+                        </div>
+                        <div class="display-6 fw-bold mb-2">
+                            {% if inspection.predicted_class == 'Defective' %}
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>DEFECTIVE
+                            {% else %}
+                                <i class="bi bi-check-circle-fill me-2"></i>NORMAL
+                            {% endif %}
+                        </div>
+                        <div>
+                            <span class="badge-clean {% if inspection.predicted_class == 'Defective' %}badge-clean-defective{% else %}badge-clean-normal{% endif %} px-3 py-1 fs-6">
+                                Confidence: {{ inspection.confidence|floatformat:4 }} ({{ inspection.confidence|stringformat:".2%" }})
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Metrics Grid -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-6">
+                            <div class="p-3 bg-light rounded border text-center">
+                                <div class="stat-label">Defect Probability</div>
+                                <div class="h4 fw-bold mt-1 mb-0 text-dark">
+                                    {{ inspection.defect_probability|floatformat:4 }}
+                                </div>
+                                <div class="small text-muted mt-1" style="font-size: 0.75rem;">Sigmoid &sigma;(z)</div>
+                            </div>
+                        </div>
+
+                        <div class="col-6">
+                            <div class="p-3 bg-light rounded border text-center">
+                                <div class="stat-label">Decision Threshold</div>
+                                <div class="h4 fw-bold mt-1 mb-0 text-dark">0.5000</div>
+                                <div class="small text-muted mt-1" style="font-size: 0.75rem;">Fixed threshold</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Technical Specifications Table -->
+                    <div class="border rounded bg-light p-3 mb-4">
+                        <table class="table table-sm table-borderless small mb-0">
+                            <tr>
+                                <td class="text-muted fw-semibold" style="width: 42%;">Target Product:</td>
+                                <td><code class="fw-bold text-primary">{{ inspection.product.product_id }}</code> ({{ inspection.product.name }})</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted fw-semibold">Model Version:</td>
+                                <td><span class="badge-clean badge-clean-neutral font-monospace">BIT-PLATE-CV-1.0</span></td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted fw-semibold">Inference Latency:</td>
+                                <td><span class="fw-semibold text-dark">{{ inspection.inference_duration_ms|default:"< 50" }} ms</span> (local CPU)</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted fw-semibold">Processed At:</td>
+                                <td>{{ inspection.completed_at|date:"Y-m-d H:i:s T" }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted fw-semibold">Supervisor Review:</td>
+                                <td>
+                                    {% if inspection.is_reviewed %}
+                                        <span class="badge-clean badge-clean-normal">Reviewed ({{ inspection.reviewed_class }})</span>
+                                    {% else %}
+                                        <span class="badge-clean badge-clean-warning">Pending Review</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                {% else %}
+                    <!-- Failure Banner -->
+                    <div class="alert alert-danger p-3 mb-4 rounded">
+                        <h6 class="fw-bold mb-1"><i class="bi bi-x-circle-fill me-1"></i> Inspection Failed</h6>
+                        <p class="mb-0 small">{{ inspection.failure_reason|default:"The uploaded image could not be processed." }}</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                <a href="{% url 'engineer_dashboard' %}" class="btn-saas-secondary btn-saas-sm">
+                    <i class="bi bi-house me-1"></i> Engineer Dashboard
+                </a>
+                <a href="{% url 'single_inspection' %}" class="btn-saas-primary btn-saas-sm">
+                    <i class="bi bi-camera me-1"></i> Inspect Another Image
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

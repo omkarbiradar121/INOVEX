@@ -1,0 +1,339 @@
+{% extends 'base.html' %}
+
+{% block title %}Batch {{ batch.batch_id|slice:":8" }} Status — INOVEX{% endblock %}
+{% block page_title %}Batch Inspection Status{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h1 class="page-title mb-0">Batch Inspection Status</h1>
+            <span id="batchStatusBadge" class="badge-clean {% if batch.status == 'COMPLETED' %}badge-clean-normal{% elif batch.status == 'FAILED' %}badge-clean-defective{% else %}badge-clean-neutral{% endif %} fs-6">
+                {{ batch.get_status_display }}
+            </span>
+        </div>
+        <p class="page-subtitle">
+            Batch ID: <code>{{ batch.batch_id }}</code> &bull;
+            Product: <strong>{{ batch.product.product_id }}</strong> ({{ batch.product.name }}) &bull;
+            Submitted: {{ batch.created_at|date:"Y-m-d H:i:s" }}
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'batch_upload' %}" class="btn-saas-primary btn-saas-sm">
+            <i class="bi bi-collection me-1"></i> New Batch
+        </a>
+        <a href="{% url 'engineer_dashboard' %}" class="btn-saas-secondary btn-saas-sm">
+            <i class="bi bi-speedometer2 me-1"></i> Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Progress and Metrics Overview -->
+<div class="stat-card p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="fw-semibold text-dark small">
+            <i class="bi bi-activity text-primary me-1"></i>
+            Batch Processing Progress: <span id="progressText" class="fw-bold">{{ batch.progress_percentage }}%</span>
+        </div>
+        <div class="small text-muted" id="processingStatusText">
+            {% if batch.status == 'COMPLETED' %}
+                <span class="text-success"><i class="bi bi-check-circle-fill me-1"></i> All items processed</span>
+            {% elif batch.status == 'PROCESSING' %}
+                <span class="text-primary"><span class="spinner-border spinner-border-sm me-1" style="width: 0.8rem; height: 0.8rem;"></span> Processing queue...</span>
+            {% else %}
+                <span class="text-secondary"><i class="bi bi-clock me-1"></i> Queued for execution</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="progress mb-4" style="height: 8px; border-radius: 9999px; background-color: #e2e8f0;">
+        <div id="batchProgressBar"
+             class="progress-bar {% if batch.status == 'PROCESSING' %}progress-bar-striped progress-bar-animated bg-primary{% elif batch.status == 'COMPLETED' %}bg-success{% elif batch.status == 'FAILED' %}bg-danger{% else %}bg-secondary{% endif %}"
+             role="progressbar"
+             style="width: {{ batch.progress_percentage }}%; border-radius: 9999px;"
+             aria-valuenow="{{ batch.progress_percentage }}"
+             aria-valuemin="0"
+             aria-valuemax="100">
+        </div>
+    </div>
+
+    <!-- Metrics Counters -->
+    <div class="row g-3 text-center">
+        <div class="col-6 col-md-3">
+            <div class="p-3 bg-light rounded border">
+                <div class="stat-label">Total Images</div>
+                <div class="h3 fw-bold mb-0 text-dark" id="statTotal">{{ batch.total_images }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="p-3 bg-light rounded border">
+                <div class="stat-label">Completed</div>
+                <div class="h3 fw-bold mb-0 text-success" id="statCompleted">{{ batch.completed_count }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="p-3 bg-light rounded border">
+                <div class="stat-label">Failed</div>
+                <div class="h3 fw-bold mb-0 text-danger" id="statFailed">{{ batch.failed_count }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="p-3 bg-light rounded border">
+                <div class="stat-label">Model Version</div>
+                <div class="h6 fw-bold mb-0 text-dark font-monospace">BIT-PLATE-CV-1.0</div>
+                <div class="text-muted" style="font-size: 0.72rem;">Fixed Threshold: 0.50</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Item Breakdown Table -->
+<div class="card-table mb-4">
+    <div class="card-table-header">
+        <h6 class="card-table-title d-flex align-items-center gap-2">
+            <i class="bi bi-images text-primary"></i> Individual Inspection Results
+        </h6>
+        <button id="manualRefreshBtn" class="btn-saas-secondary btn-saas-sm" onclick="fetchBatchStatus()">
+            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+        </button>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table-saas" id="inspectionsTable">
+            <thead>
+                <tr>
+                    <th class="ps-3">ID</th>
+                    <th>Thumbnail</th>
+                    <th>Filename</th>
+                    <th>Status</th>
+                    <th>AI Prediction</th>
+                    <th>Confidence</th>
+                    <th>Defect Prob.</th>
+                    <th>Failure Reason / Notes</th>
+                    <th class="text-end pe-3">Action</th>
+                </tr>
+            </thead>
+            <tbody id="inspectionsTableBody">
+                {% for insp in inspections %}
+                    <tr id="row-{{ insp.id }}">
+                        <td class="ps-3"><code class="small fw-semibold">INSP-{{ insp.inspection_id|slice:":8" }}</code></td>
+                        <td>
+                            {% if insp.image %}
+                                <img src="{{ insp.image.url }}" alt="Thumbnail" class="rounded border" style="width: 40px; height: 40px; object-fit: cover;">
+                            {% else %}
+                                <div class="bg-light rounded border text-center text-muted" style="width: 40px; height: 40px; line-height: 40px;">
+                                    <i class="bi bi-image"></i>
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark text-truncate" style="max-width: 160px;" title="{{ insp.image_filename }}">
+                                {{ insp.image_filename }}
+                            </div>
+                            <div class="text-muted" style="font-size: 0.75rem;">{{ insp.file_size_bytes|filesizeformat }}</div>
+                        </td>
+                        <td>
+                            <span class="badge-clean {% if insp.status == 'COMPLETED' %}badge-clean-normal{% elif insp.status == 'FAILED' %}badge-clean-defective{% else %}badge-clean-neutral{% endif %}">
+                                {{ insp.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if insp.status == 'COMPLETED' %}
+                                {% if insp.predicted_class == 'Defective' %}
+                                    <span class="badge-clean badge-clean-defective"><i class="bi bi-exclamation-triangle me-1"></i> Defective</span>
+                                {% elif insp.predicted_class == 'Normal' %}
+                                    <span class="badge-clean badge-clean-normal"><i class="bi bi-check-circle me-1"></i> Normal</span>
+                                {% else %}
+                                    <span class="badge-clean badge-clean-neutral">{{ insp.predicted_class }}</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted small">&mdash;</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if insp.confidence is not None %}
+                                <span class="fw-semibold text-dark">{{ insp.confidence|floatformat:4 }}</span>
+                                <span class="text-muted small">({{ insp.confidence|stringformat:".1%" }})</span>
+                            {% else %}
+                                <span class="text-muted">&mdash;</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if insp.defect_probability is not None %}
+                                <code class="small">{{ insp.defect_probability|floatformat:4 }}</code>
+                            {% else %}
+                                <span class="text-muted">&mdash;</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if insp.status == 'FAILED' %}
+                                <span class="text-danger small" title="{{ insp.failure_reason }}">
+                                    <i class="bi bi-exclamation-circle-fill me-1"></i>
+                                    {{ insp.failure_reason|truncatechars:50 }}
+                                </span>
+                            {% elif insp.status == 'COMPLETED' %}
+                                <span class="text-muted small">Inference: {{ insp.inference_duration_ms|default:"< 50" }} ms</span>
+                            {% else %}
+                                <span class="text-muted small">Awaiting worker</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-3">
+                            <a href="{% url 'inspection_result' pk=insp.pk %}" class="btn-saas-secondary btn-saas-sm">
+                                <i class="bi bi-eye"></i> Details
+                            </a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted small">No images in this batch.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Live JavaScript Status Polling -->
+<script>
+    const BATCH_ID = "{{ batch.batch_id }}";
+    const STATUS_API_URL = "{% url 'api_batch_status' batch_id=batch.batch_id %}";
+    let pollInterval = null;
+
+    function getStatusBadgeHtml(status) {
+        switch(status) {
+            case 'COMPLETED':
+                return '<span class="badge-clean badge-clean-normal">Completed</span>';
+            case 'PROCESSING':
+                return '<span class="badge-clean badge-clean-warning"><span class="spinner-border spinner-border-sm me-1" style="width: 0.65rem; height: 0.65rem;"></span> Processing</span>';
+            case 'FAILED':
+                return '<span class="badge-clean badge-clean-defective">Failed</span>';
+            case 'QUEUED':
+            default:
+                return '<span class="badge-clean badge-clean-neutral">Queued</span>';
+        }
+    }
+
+    function getPredictionBadgeHtml(predictedClass) {
+        if (predictedClass === 'Defective') {
+            return '<span class="badge-clean badge-clean-defective"><i class="bi bi-exclamation-triangle me-1"></i> Defective</span>';
+        } else if (predictedClass === 'Normal') {
+            return '<span class="badge-clean badge-clean-normal"><i class="bi bi-check-circle me-1"></i> Normal</span>';
+        }
+        return '<span class="text-muted small">&mdash;</span>';
+    }
+
+    function formatBytes(bytes) {
+        if (!bytes || bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    async function fetchBatchStatus() {
+        try {
+            const response = await fetch(STATUS_API_URL, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            if (!response.ok) return;
+
+            const data = await response.json();
+
+            // Update Progress Bar & Counters
+            const progress = data.progress_percentage || 0;
+            const progressBar = document.getElementById('batchProgressBar');
+            const progressText = document.getElementById('progressText');
+            progressBar.style.width = progress + '%';
+            progressBar.setAttribute('aria-valuenow', progress);
+            progressText.textContent = progress + '%';
+
+            document.getElementById('statTotal').textContent = data.total_images || 0;
+            document.getElementById('statCompleted').textContent = data.completed_count || 0;
+            document.getElementById('statFailed').textContent = data.failed_count || 0;
+
+            const statusBadge = document.getElementById('batchStatusBadge');
+            statusBadge.innerHTML = getStatusBadgeHtml(data.status);
+
+            const statusText = document.getElementById('processingStatusText');
+            if (data.status === 'COMPLETED') {
+                statusText.innerHTML = '<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i> All items processed</span>';
+                progressBar.className = 'progress-bar bg-success';
+                if (pollInterval) clearInterval(pollInterval);
+            } else if (data.status === 'PROCESSING') {
+                statusText.innerHTML = '<span class="text-primary"><span class="spinner-border spinner-border-sm me-1" style="width: 0.8rem; height: 0.8rem;"></span> Processing queue...</span>';
+                progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-primary';
+            } else if (data.status === 'FAILED') {
+                statusText.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle-fill me-1"></i> Batch processing halted</span>';
+                progressBar.className = 'progress-bar bg-danger';
+                if (pollInterval) clearInterval(pollInterval);
+            }
+
+            // Update Individual Rows
+            if (data.inspections && data.inspections.length > 0) {
+                const tbody = document.getElementById('inspectionsTableBody');
+                tbody.innerHTML = '';
+
+                data.inspections.forEach(insp => {
+                    const tr = document.createElement('tr');
+                    tr.id = `row-${insp.id}`;
+
+                    const thumbHtml = insp.image ?
+                        `<img src="${insp.image}" alt="Thumbnail" class="rounded border" style="width: 40px; height: 40px; object-fit: cover;">` :
+                        `<div class="bg-light rounded border text-center text-muted" style="width: 40px; height: 40px; line-height: 40px;"><i class="bi bi-image"></i></div>`;
+
+                    const confidenceText = (insp.confidence !== null && insp.confidence !== undefined) ?
+                        `<span class="fw-semibold text-dark">${parseFloat(insp.confidence).toFixed(4)}</span> <span class="text-muted small">(${ (parseFloat(insp.confidence) * 100).toFixed(1) }%)</span>` :
+                        `<span class="text-muted">&mdash;</span>`;
+
+                    const defectProbText = (insp.defect_probability !== null && insp.defect_probability !== undefined) ?
+                        `<code class="small">${parseFloat(insp.defect_probability).toFixed(4)}</code>` :
+                        `<span class="text-muted">&mdash;</span>`;
+
+                    let failureHtml = '<span class="text-muted small">Awaiting worker</span>';
+                    if (insp.status === 'FAILED') {
+                        const shortReason = (insp.failure_reason || 'Validation error').substring(0, 50);
+                        failureHtml = `<span class="text-danger small" title="${insp.failure_reason || ''}"><i class="bi bi-exclamation-circle-fill me-1"></i> ${shortReason}</span>`;
+                    } else if (insp.status === 'COMPLETED') {
+                        failureHtml = `<span class="text-muted small">Inference: ${insp.inference_duration_ms || '< 50'} ms</span>`;
+                    }
+
+                    tr.innerHTML = `
+                        <td class="ps-3"><code class="small fw-semibold">INSP-${(insp.inspection_id || '').substring(0, 8)}</code></td>
+                        <td>${thumbHtml}</td>
+                        <td>
+                            <div class="fw-semibold text-dark text-truncate" style="max-width: 160px;" title="${insp.image_filename}">
+                                ${insp.image_filename}
+                            </div>
+                            <div class="text-muted" style="font-size: 0.75rem;">${formatBytes(insp.file_size_bytes)}</div>
+                        </td>
+                        <td>${getStatusBadgeHtml(insp.status)}</td>
+                        <td>${getPredictionBadgeHtml(insp.predicted_class)}</td>
+                        <td>${confidenceText}</td>
+                        <td>${defectProbText}</td>
+                        <td>${failureHtml}</td>
+                        <td class="text-end pe-3">
+                            <a href="/inspections/result/${insp.id}/" class="btn-saas-secondary btn-saas-sm">
+                                <i class="bi bi-eye"></i> Details
+                            </a>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+        } catch (err) {
+            console.error('Batch polling error:', err);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const initialStatus = "{{ batch.status }}";
+        if (initialStatus === 'QUEUED' || initialStatus === 'PROCESSING') {
+            pollInterval = setInterval(fetchBatchStatus, 2000);
+        }
+    });
+</script>
+{% endblock %}

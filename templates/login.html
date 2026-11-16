@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In — INOVEX{% endblock %}
+
+{% block unauth_content %}
+<div class="w-100" style="max-width: 420px;">
+    <!-- Centered Enterprise SaaS Login Card -->
+    <div class="card border-0 shadow-sm p-4 p-sm-5 rounded-4 bg-white" style="border: 1px solid var(--card-border) !important;">
+        <!-- INOVEX Brand Header -->
+        <div class="text-center mb-4">
+            <div class="d-inline-flex align-items-center justify-content-center p-3 rounded-3 mb-3" style="background-color: var(--brand-navy); color: var(--brand-electric); box-shadow: 0 4px 12px rgba(20, 36, 58, 0.15);">
+                <svg class="inovex-logo-symbol inovex-logo-lg" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M16 3L27.5 9.7V22.3L16 29L4.5 22.3V9.7L16 3Z" stroke="#1687E8" stroke-width="2.2" stroke-linejoin="round"/>
+                    <path d="M16 3V16M16 16L27.5 22.3M16 16L4.5 22.3" stroke="#1687E8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+                    <polygon points="16,11.5 19.8,16 16,20.5 12.2,16" fill="#1687E8"/>
+                </svg>
+            </div>
+            <h3 class="fw-bold mb-1 text-dark tracking-tight inovex-wordmark-dark" style="letter-spacing: -0.03em;">INOVEX</h3>
+            <p class="inovex-tagline mb-0">Intelligent Manufacturing. Assured Quality.</p>
+        </div>
+
+        <div class="mb-4 text-center">
+            <h5 class="fw-semibold text-secondary mb-1" style="font-size: 1rem;">Sign in to your account</h5>
+            <p class="text-muted small mb-0">Enter your enterprise credentials to proceed</p>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-danger py-2 px-3 small border border-danger-subtle rounded-3 mb-3" role="alert">
+                <i class="bi bi-exclamation-circle me-1"></i> {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Authentication Form -->
+        <form method="POST" action="{% url 'login' %}">
+            {% csrf_token %}
+            
+            <div class="mb-3">
+                <label class="form-label small fw-semibold text-secondary mb-1">Username</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-person"></i></span>
+                    <input type="text" name="username" class="form-control border-start-0 ps-1" placeholder="Enter username" required autofocus autocomplete="username">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="form-label small fw-semibold text-secondary mb-0">Password</label>
+                </div>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-lock"></i></span>
+                    <input type="password" name="password" id="loginPassword" class="form-control border-start-0 border-end-0 ps-1" placeholder="Enter password" required autocomplete="current-password">
+                    <button class="btn btn-outline-secondary border-start-0" type="button" id="togglePasswordBtn" title="Show/Hide password">
+                        <i class="bi bi-eye" id="togglePasswordIcon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-saas-primary w-100 py-2 fw-semibold shadow-sm mb-2" id="submitLoginBtn">
+                <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+            </button>
+        </form>
+    </div>
+
+    <!-- Minimal Card Footer -->
+    <div class="text-center mt-3 text-muted small">
+        <span>INOVEX &bull; AI-Powered Manufacturing Intelligence Platform</span>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggleBtn = document.getElementById('togglePasswordBtn');
+        const passInput = document.getElementById('loginPassword');
+        const passIcon = document.getElementById('togglePasswordIcon');
+
+        if (toggleBtn && passInput && passIcon) {
+            toggleBtn.addEventListener('click', function() {
+                if (passInput.type === 'password') {
+                    passInput.type = 'text';
+                    passIcon.classList.replace('bi-eye', 'bi-eye-slash');
+                } else {
+                    passInput.type = 'password';
+                    passIcon.classList.replace('bi-eye-slash', 'bi-eye');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

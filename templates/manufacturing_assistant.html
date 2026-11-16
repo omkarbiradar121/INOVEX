@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}Manufacturing Assistant — INOVEX{% endblock %}
+{% block page_title %}Manufacturing Assistant{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header mb-4">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <h1 class="page-title mb-0">Manufacturing Assistant</h1>
+                <span class="badge-clean badge-clean-normal">Strict RAG Grounding</span>
+            </div>
+            <p class="page-subtitle mb-0">Query equipment limits, alarm codes, and maintenance procedures strictly verified against official technical manuals.</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-light text-secondary border font-monospace px-3 py-2">
+                <i class="bi bi-shield-lock me-1"></i> ISO 9001:2015 Compliant
+            </span>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Inquiry Console -->
+    <div class="col-lg-7">
+        <div class="card card-custom p-4 mb-4">
+            <div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom">
+                <i class="bi bi-journal-text text-primary fs-5"></i>
+                <h2 class="h6 fw-bold text-dark mb-0">Technical Inquiry Console</h2>
+            </div>
+
+            <form id="askForm">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold text-secondary">Target Equipment <span class="text-danger">*</span></label>
+                    <select id="selectedMachine" name="machine_id" class="form-select" required>
+                        <option value="">-- Choose Machine to Restrict RAG Context --</option>
+                        {% for m in machines %}
+                        <option value="{{ m.machine_id }}">{{ m.machine_id }} &mdash; {{ m.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text small text-muted">Retrieval-Augmented Generation is strictly isolated to the selected machine's indexed manuals. Cross-machine contamination is mathematically prevented.</div>
+                </div>
+
+                <!-- Suggested Inquiries -->
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold text-muted text-uppercase" style="letter-spacing: 0.5px; font-size: 0.72rem;">Suggested Inquiries:</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-saas-secondary btn-saas-sm quick-q" data-q="What does error code E17 mean and what corrective action is required?">
+                            Error E17
+                        </button>
+                        <button type="button" class="btn btn-saas-secondary btn-saas-sm quick-q" data-q="What does error code E31 mean and how do I resolve it?">
+                            Error E31
+                        </button>
+                        <button type="button" class="btn btn-saas-secondary btn-saas-sm quick-q" data-q="What is the operational startup sequence and the scheduled maintenance hydraulic filter torque specification?">
+                            Dual Manual Inquiry
+                        </button>
+                        <button type="button" class="btn btn-saas-secondary btn-saas-sm quick-q" data-q="What is the recommended laser calibration wavelength and mirror frequency?">
+                            Out-of-Scope Query
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold text-secondary">Technical Question / Symptom <span class="text-danger">*</span></label>
+                    <textarea id="questionInput" name="question" class="form-control" rows="3" placeholder="Describe the alarm code, operating limit, or maintenance procedure..." required></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-saas-primary w-100 py-2 fw-medium" id="btnSubmitQuestion">
+                    <i class="bi bi-send-fill me-1"></i> Retrieve Evidence &amp; Generate Grounded Answer
+                </button>
+            </form>
+        </div>
+
+        <!-- Real-Time AI Response Display -->
+        <div id="responseCard" class="card card-custom p-4 mb-4" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-cpu text-primary fs-5"></i>
+                    <h3 class="h6 fw-bold mb-0 text-dark">Verified Technical Answer</h3>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span id="answerStatusBadge" class="badge-clean"></span>
+                    <a id="btnDownloadPdf" href="#" class="btn btn-saas-secondary btn-saas-sm" target="_blank" style="display: none;">
+                        <i class="bi bi-file-earmark-pdf me-1 text-danger"></i> Audit PDF
+                    </a>
+                </div>
+            </div>
+
+            <div id="answerText" class="p-3 bg-light rounded border mb-3 small" style="white-space: pre-line; line-height: 1.6;"></div>
+
+            <!-- Citations Container -->
+            <div id="citationsContainer">
+                <div class="small fw-bold text-secondary text-uppercase mb-2" style="letter-spacing: 0.5px; font-size: 0.72rem;">Supporting Manual Citations</div>
+                <div id="citationsList" class="d-flex flex-column gap-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Question History -->
+    <div class="col-lg-5">
+        <div class="card-table">
+            <div class="card-table-header">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-clock-history text-secondary"></i>
+                    <h2 class="card-table-title">Recent Inquiries</h2>
+                </div>
+                <span class="badge bg-light text-dark border">{{ history|length }}</span>
+            </div>
+            <div class="p-3">
+                {% if history %}
+                <div class="list-group list-group-flush">
+                    {% for h in history %}
+                    <div class="list-group-item px-0 py-3 border-bottom">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <span class="badge bg-light text-primary border font-monospace small">{{ h.machine.machine_id }}</span>
+                            <span class="small text-muted" style="font-size: 0.72rem;">{{ h.timestamp|date:"M d, H:i" }}</span>
+                        </div>
+                        <div class="fw-semibold text-dark small mb-1">{{ h.question }}</div>
+                        <p class="text-muted small mb-2 text-truncate" style="max-width: 320px;">
+                            {{ h.answer|default:"No answer provided." }}
+                        </p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge-clean {% if h.status == 'answered' %}badge-clean-normal{% else %}badge-clean-defective{% endif %}" style="font-size: 0.68rem;">
+                                {{ h.status }}
+                            </span>
+                            {% if h.status == 'answered' or user.is_supervisor_role or user.is_admin_role %}
+                            <a href="{% url 'download_query_pdf' h.id %}" target="_blank" class="btn btn-outline-secondary btn-saas-sm py-0 px-2" style="font-size: 0.75rem;">
+                                <i class="bi bi-file-earmark-pdf me-1 text-danger"></i> PDF
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-chat-square-text text-muted fs-3 d-block mb-2"></i>
+                    <div class="fw-medium">No manual questions yet</div>
+                    <div class="small">Submit an inquiry on the left to consult official manuals.</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const askForm = document.getElementById('askForm');
+    const questionInput = document.getElementById('questionInput');
+    const selectedMachine = document.getElementById('selectedMachine');
+    const btnSubmit = document.getElementById('btnSubmitQuestion');
+    const responseCard = document.getElementById('responseCard');
+    const answerText = document.getElementById('answerText');
+    const answerBadge = document.getElementById('answerStatusBadge');
+    const btnPdf = document.getElementById('btnDownloadPdf');
+    const citationsContainer = document.getElementById('citationsContainer');
+    const citationsList = document.getElementById('citationsList');
+
+    // Quick suggestion prompt filler
+    document.querySelectorAll('.quick-q').forEach(btn => {
+        btn.addEventListener('click', function() {
+            questionInput.value = this.dataset.q;
+            if (!selectedMachine.value) {
+                selectedMachine.value = 'M-HP200';
+            }
+            questionInput.focus();
+        });
+    });
+
+    if (askForm) {
+        askForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const machineId = selectedMachine.value;
+            const question = questionInput.value.trim();
+
+            if (!machineId || !question) return;
+
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Querying Manual Knowledge Base...';
+            responseCard.style.display = 'block';
+            answerText.innerHTML = '<span class="text-muted"><i class="bi bi-hourglass-split me-1"></i> Searching indexed PDF passages and verifying citations...</span>';
+            answerBadge.className = 'badge-clean badge-clean-neutral';
+            answerBadge.textContent = 'Processing';
+            btnPdf.style.display = 'none';
+            citationsList.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/ask/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+                    },
+                    body: JSON.stringify({
+                        machine_id: machineId,
+                        question: question
+                    })
+                });
+
+                const data = await response.json();
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i class="bi bi-send-fill me-1"></i> Retrieve Evidence &amp; Generate Grounded Answer';
+
+                if (response.ok) {
+                    answerText.textContent = data.answer;
+                    if (data.status === 'answered') {
+                        answerBadge.className = 'badge-clean badge-clean-normal';
+                        answerBadge.textContent = 'Answered & Verified';
+                        if (data.id) {
+                            btnPdf.href = `/api/queries/${data.id}/download-pdf/`;
+                            btnPdf.style.display = 'inline-flex';
+                        }
+                    } else {
+                        answerBadge.className = 'badge-clean badge-clean-defective';
+                        answerBadge.textContent = 'Unanswered (Out of Scope)';
+                    }
+
+                    // Render Citations
+                    if (data.citations && data.citations.length > 0) {
+                        citationsContainer.style.display = 'block';
+                        citationsList.innerHTML = data.citations.map(c => `
+                            <div class="p-2 border rounded bg-white shadow-xs">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="badge bg-light text-primary border font-monospace" style="font-size: 0.75rem;">
+                                        ${c.document_id || ''} Rev ${c.revision || '1.0'} &bull; Page ${c.page_number}
+                                    </span>
+                                    <span class="text-muted small" style="font-size: 0.72rem;">${c.manual_title || ''}</span>
+                                </div>
+                                <div class="text-dark small fst-italic" style="line-height: 1.4;">"${c.passage_text || c.passage || ''}"</div>
+                            </div>
+                        `).join('');
+                    } else {
+                        citationsContainer.style.display = 'none';
+                    }
+                } else {
+                    answerBadge.className = 'badge-clean badge-clean-defective';
+                    answerBadge.textContent = 'Error';
+                    answerText.textContent = data.error || 'Failed to process inquiry. Please check machine selection.';
+                }
+            } catch (err) {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i class="bi bi-send-fill me-1"></i> Retrieve Evidence &amp; Generate Grounded Answer';
+                answerBadge.className = 'badge-clean badge-clean-defective';
+                answerBadge.textContent = 'Network Error';
+                answerText.textContent = 'An error occurred while contacting the server: ' + err.message;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

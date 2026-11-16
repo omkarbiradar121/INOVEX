@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ action_title }} — INOVEX{% endblock %}
+{% block page_title %}{{ action_title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-7">
+        <div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 class="page-title">{{ action_title }}</h1>
+                <p class="page-subtitle">Define manufacturing line, target visual classes, and vision classifier model version</p>
+            </div>
+            <a href="{% url 'admin_dashboard' %}" class="btn-saas-secondary btn-saas-sm">
+                <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+            </a>
+        </div>
+
+        <div class="stat-card p-4 mb-4">
+            <div class="d-flex align-items-center gap-2 pb-3 mb-3 border-bottom">
+                <i class="bi bi-box-seam text-primary fs-5"></i>
+                <h6 class="fw-bold mb-0 text-dark">Product Line Specifications</h6>
+            </div>
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2 small mb-4">
+                        {% for error in form.non_field_errors %}
+                            <div><i class="bi bi-exclamation-circle me-1"></i> {{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- Product ID -->
+                <div class="mb-3">
+                    <label for="{{ form.product_id.id_for_label }}" class="form-label small fw-semibold text-secondary">
+                        Product ID <span class="text-danger">*</span>
+                    </label>
+                    {{ form.product_id }}
+                    {% if form.product_id.errors %}
+                        <div class="text-danger small mt-1">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ form.product_id.errors.0 }}
+                        </div>
+                    {% else %}
+                        <div class="form-text small" style="font-size: 0.78rem;">Challenge target: <code>P-PLATE01</code> (unique, uppercase).</div>
+                    {% endif %}
+                </div>
+
+                <!-- Product Name -->
+                <div class="mb-3">
+                    <label for="{{ form.name.id_for_label }}" class="form-label small fw-semibold text-secondary">
+                        Product Name <span class="text-danger">*</span>
+                    </label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                        <div class="text-danger small mt-1">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ form.name.errors.0 }}
+                        </div>
+                    {% else %}
+                        <div class="form-text small" style="font-size: 0.78rem;">E.g., <code>Demonstration Metal Plate</code>.</div>
+                    {% endif %}
+                </div>
+
+                <!-- Vision Model Version & Classes -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label for="{{ form.model_version.id_for_label }}" class="form-label small fw-semibold text-secondary">
+                            Model Version <span class="text-danger">*</span>
+                        </label>
+                        {{ form.model_version }}
+                        {% if form.model_version.errors %}
+                            <div class="text-danger small mt-1">
+                                {{ form.model_version.errors.0 }}
+                            </div>
+                        {% else %}
+                            <div class="form-text small" style="font-size: 0.78rem;">Assigned classifier: <code>BIT-PLATE-CV-1.0</code>.</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="{{ form.classes.id_for_label }}" class="form-label small fw-semibold text-secondary">
+                            Supported Classes <span class="text-danger">*</span>
+                        </label>
+                        {{ form.classes }}
+                        {% if form.classes.errors %}
+                            <div class="text-danger small mt-1">
+                                {{ form.classes.errors.0 }}
+                            </div>
+                        {% else %}
+                            <div class="form-text small" style="font-size: 0.78rem;">Binary defect classification: <code>Normal, Defective</code>.</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="mb-3">
+                    <label for="{{ form.description.id_for_label }}" class="form-label small fw-semibold text-secondary">
+                        Component Description &amp; Manufacturing Notes
+                    </label>
+                    {{ form.description }}
+                    {% if form.description.errors %}
+                        <div class="text-danger small mt-1">
+                            {{ form.description.errors.0 }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Active Status Checkbox -->
+                <div class="mb-4 form-check form-switch">
+                    {{ form.is_active }}
+                    <label class="form-check-label small fw-semibold text-secondary" for="{{ form.is_active.id_for_label }}">
+                        Active Product Line (ready for inspection uploads)
+                    </label>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+                    <a href="{% url 'admin_dashboard' %}" class="btn-saas-secondary btn-saas-sm">
+                        Cancel
+                    </a>
+                    <button type="submit" class="btn-saas-primary btn-saas-sm fw-semibold">
+                        <i class="bi bi-check-circle me-1"></i> {% if is_edit %}Save Changes{% else %}Register Product{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

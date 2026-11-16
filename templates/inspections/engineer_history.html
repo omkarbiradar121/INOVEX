@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+
+{% block title %}Inspection History — INOVEX{% endblock %}
+{% block page_title %}Inspection History{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+        <h1 class="page-title">Personal Inspection History</h1>
+        <p class="page-subtitle">Records of surface quality inspections and defect classifications submitted by your account</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'single_inspection' %}" class="btn-saas-primary btn-saas-sm">
+            <i class="bi bi-camera me-1"></i> New Single
+        </a>
+        <a href="{% url 'batch_upload' %}" class="btn-saas-secondary btn-saas-sm">
+            <i class="bi bi-collection me-1"></i> New Batch
+        </a>
+        <a href="{% url 'engineer_dashboard' %}" class="btn-saas-secondary btn-saas-sm">
+            <i class="bi bi-speedometer2 me-1"></i> Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Statistical Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">Total Inspections</div>
+            <div class="stat-value">{{ total_count }}</div>
+            <div class="stat-meta">Lifetime submissions</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">Classified Normal</div>
+            <div class="stat-value text-success">{{ normal_count }}</div>
+            <div class="stat-meta">Passed quality check</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">Classified Defective</div>
+            <div class="stat-value text-danger">{{ defective_count }}</div>
+            <div class="stat-meta">Flagged for defect</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">Failed Intake</div>
+            <div class="stat-value text-secondary">{{ failed_count }}</div>
+            <div class="stat-meta">Validation / corrupt files</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters Toolbar -->
+<div class="stat-card p-3 mb-4">
+    <form method="get" class="row g-2 align-items-center">
+        <div class="col-auto">
+            <span class="small fw-semibold text-secondary me-1"><i class="bi bi-funnel me-1"></i> Filter By:</span>
+        </div>
+
+        <!-- Status Filter -->
+        <div class="col-auto">
+            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()" style="font-size: 0.8125rem;">
+                <option value="" {% if status_filter == 'ALL' %}selected{% endif %}>All Statuses</option>
+                <option value="QUEUED" {% if status_filter == 'QUEUED' %}selected{% endif %}>Queued</option>
+                <option value="PROCESSING" {% if status_filter == 'PROCESSING' %}selected{% endif %}>Processing</option>
+                <option value="COMPLETED" {% if status_filter == 'COMPLETED' %}selected{% endif %}>Completed</option>
+                <option value="FAILED" {% if status_filter == 'FAILED' %}selected{% endif %}>Failed</option>
+            </select>
+        </div>
+
+        <!-- Prediction Filter -->
+        <div class="col-auto">
+            <select name="prediction" class="form-select form-select-sm" onchange="this.form.submit()" style="font-size: 0.8125rem;">
+                <option value="" {% if prediction_filter == 'ALL' %}selected{% endif %}>All Predictions</option>
+                <option value="Normal" {% if prediction_filter == 'Normal' %}selected{% endif %}>Normal</option>
+                <option value="Defective" {% if prediction_filter == 'Defective' %}selected{% endif %}>Defective</option>
+            </select>
+        </div>
+
+        {% if status_filter != 'ALL' or prediction_filter != 'ALL' %}
+            <div class="col-auto">
+                <a href="{% url 'engineer_history' %}" class="btn btn-outline-danger btn-sm py-1 px-2" style="font-size: 0.78rem;">
+                    <i class="bi bi-x me-1"></i> Clear Filters
+                </a>
+            </div>
+        {% endif %}
+
+        <div class="col text-end small text-muted">
+            Showing {{ inspections|length }} record{{ inspections|length|pluralize }}
+        </div>
+    </form>
+</div>
+
+<!-- History Table -->
+<div class="card-table mb-4">
+    {% if inspections %}
+        <div class="table-responsive">
+            <table class="table-saas">
+                <thead>
+                    <tr>
+                        <th class="ps-3">ID</th>
+                        <th>Thumbnail</th>
+                        <th>Product</th>
+                        <th>Original Prediction</th>
+                        <th>Confidence</th>
+                        <th>Defect Prob.</th>
+                        <th>Model</th>
+                        <th>Status</th>
+                        <th>Submission Date</th>
+                        <th class="text-end pe-3">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for insp in inspections %}
+                        <tr>
+                            <td class="ps-3">
+                                <code class="small fw-semibold">INSP-{{ insp.inspection_id|slice:":8" }}</code>
+                                {% if insp.batch %}
+                                    <div><span class="badge-clean badge-clean-neutral" style="font-size: 0.68rem;" title="Batch {{ insp.batch.batch_id }}">Batch</span></div>
+                                {% else %}
+                                    <div><span class="badge-clean badge-clean-neutral" style="font-size: 0.68rem;">Single</span></div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if insp.image %}
+                                    <img src="{{ insp.image.url }}" alt="Thumbnail" class="rounded border" style="width: 38px; height: 38px; object-fit: cover;">
+                                {% else %}
+                                    <div class="bg-light rounded border text-center text-muted" style="width: 38px; height: 38px; line-height: 38px;">
+                                        <i class="bi bi-image"></i>
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="fw-semibold text-dark">{{ insp.product.product_id }}</div>
+                                <div class="small text-muted text-truncate" style="max-width: 140px;">{{ insp.product.name }}</div>
+                            </td>
+                            <td>
+                                {% if insp.status == 'COMPLETED' %}
+                                    {% if insp.predicted_class == 'Defective' %}
+                                        <span class="badge-clean badge-clean-defective"><i class="bi bi-exclamation-triangle me-1"></i> Defective</span>
+                                    {% elif insp.predicted_class == 'Normal' %}
+                                        <span class="badge-clean badge-clean-normal"><i class="bi bi-check-circle me-1"></i> Normal</span>
+                                    {% else %}
+                                        <span class="badge-clean badge-clean-neutral">{{ insp.predicted_class }}</span>
+                                    {% endif %}
+                                {% elif insp.status == 'FAILED' %}
+                                    <span class="badge-clean badge-clean-defective">
+                                        <i class="bi bi-x-circle me-1"></i> Failed
+                                    </span>
+                                {% else %}
+                                    <span class="badge-clean badge-clean-neutral">
+                                        {{ insp.get_status_display }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if insp.confidence is not None %}
+                                    <span class="fw-semibold text-dark">{{ insp.confidence|floatformat:4 }}</span>
+                                    <div class="text-muted" style="font-size: 0.72rem;">({{ insp.confidence|stringformat:".1%" }})</div>
+                                {% else %}
+                                    <span class="text-muted">&mdash;</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if insp.defect_probability is not None %}
+                                    <code class="small">{{ insp.defect_probability|floatformat:4 }}</code>
+                                {% else %}
+                                    <span class="text-muted">&mdash;</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge-clean badge-clean-neutral font-monospace">{{ insp.model_version }}</span>
+                            </td>
+                            <td>
+                                <span class="badge-clean {% if insp.status == 'COMPLETED' %}badge-clean-normal{% elif insp.status == 'FAILED' %}badge-clean-defective{% else %}badge-clean-neutral{% endif %}">
+                                    {{ insp.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="small text-muted">
+                                {{ insp.created_at|date:"Y-m-d H:i" }}
+                            </td>
+                            <td class="text-end pe-3">
+                                <a href="{% url 'inspection_result' pk=insp.pk %}" class="btn-saas-secondary btn-saas-sm">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-clock-history text-muted fs-1 mb-2 d-block"></i>
+            <div class="text-muted fw-semibold">No inspection records match the current filter.</div>
+            <p class="text-muted small mb-3">Submit single images or batch uploads to inspect manufactured plate quality.</p>
+            <div class="d-flex justify-content-center gap-2">
+                <a href="{% url 'single_inspection' %}" class="btn-saas-primary btn-saas-sm">
+                    <i class="bi bi-camera me-1"></i> Inspect Image
+                </a>
+                <a href="{% url 'batch_upload' %}" class="btn-saas-secondary btn-saas-sm">
+                    <i class="bi bi-collection me-1"></i> Batch Upload
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

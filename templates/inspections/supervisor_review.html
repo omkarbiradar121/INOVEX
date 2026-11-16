@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+
+{% block title %}Review INSP-{{ inspection.inspection_id|slice:":8" }} — INOVEX{% endblock %}
+{% block page_title %}Quality Review Audit{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h1 class="page-title mb-0">Quality Review &amp; Audit</h1>
+            {% if inspection.is_reviewed %}
+                <span class="badge-clean badge-clean-normal">
+                    <i class="bi bi-check2-circle"></i> Already Reviewed
+                </span>
+            {% else %}
+                <span class="badge-clean badge-clean-warning">
+                    <i class="bi bi-clock"></i> Awaiting Review
+                </span>
+            {% endif %}
+        </div>
+        <p class="page-subtitle">
+            Record ID: <code>INSP-{{ inspection.inspection_id|slice:":8" }}</code> &bull;
+            Submitted by <strong>{{ inspection.engineer.get_full_name|default:inspection.engineer.username }}</strong> on {{ inspection.created_at|date:"Y-m-d H:i:s" }}
+        </p>
+    </div>
+    <div>
+        <a href="{% url 'supervisor_dashboard' %}" class="btn-saas-secondary btn-saas-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Review Portal
+        </a>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Image Card -->
+    <div class="col-lg-6">
+        <div class="stat-card h-100 p-0 overflow-hidden d-flex flex-column">
+            <div class="px-3 py-2 border-bottom bg-light d-flex justify-content-between align-items-center">
+                <span class="small fw-semibold text-secondary">
+                    <i class="bi bi-image me-1 text-primary"></i> Uploaded Product Surface
+                </span>
+                <span class="badge-clean badge-clean-neutral font-monospace small">{{ inspection.image_filename }}</span>
+            </div>
+            <div class="p-3 text-center d-flex flex-column justify-content-center align-items-center flex-grow-1" style="background-color: #0b0f19;">
+                {% if inspection.image %}
+                    <img src="{{ inspection.image.url }}" alt="Inspected Plate" class="img-fluid rounded border border-secondary shadow-sm" style="max-height: 420px; object-fit: contain;">
+                {% else %}
+                    <div class="text-secondary py-5">
+                        <i class="bi bi-image-slash fs-1 d-block mb-2"></i> No Image Stored
+                    </div>
+                {% endif %}
+            </div>
+            <div class="p-3 bg-white border-top small text-muted d-flex flex-wrap justify-content-between align-items-center">
+                <span>Resolution: <strong>{{ inspection.image_width|default:"--" }} &times; {{ inspection.image_height|default:"--" }} px</strong></span>
+                <span>Format: <strong>{{ inspection.image_format|default:"Unknown" }}</strong></span>
+                <span>Size: <strong>{{ inspection.file_size_bytes|filesizeformat }}</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Output & Review Form Card -->
+    <div class="col-lg-6">
+        <!-- Original AI Prediction (IMMUTABLE) -->
+        <div class="stat-card mb-4 p-3">
+            <div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-cpu text-primary"></i>
+                    <h6 class="fw-bold mb-0 text-dark">Original AI Prediction (Immutable)</h6>
+                </div>
+                <span class="badge-clean badge-clean-neutral font-monospace">{{ inspection.model_version }}</span>
+            </div>
+
+            <div class="row g-2 text-center mb-3">
+                <div class="col-4">
+                    <div class="p-2 rounded bg-light border">
+                        <div class="stat-label mb-1">AI Class</div>
+                        <div>
+                            {% if inspection.predicted_class == 'Defective' %}
+                                <span class="badge-clean badge-clean-defective fw-semibold px-2 py-1">Defective</span>
+                            {% elif inspection.predicted_class == 'Normal' %}
+                                <span class="badge-clean badge-clean-normal fw-semibold px-2 py-1">Normal</span>
+                            {% else %}
+                                <span class="badge-clean badge-clean-neutral">{{ inspection.predicted_class|default:"--" }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="p-2 rounded bg-light border">
+                        <div class="stat-label mb-1">Confidence</div>
+                        <div class="h5 fw-bold mb-0 text-dark">
+                            {{ inspection.confidence|floatformat:4 }}
+                        </div>
+                        <div class="text-muted" style="font-size: 0.72rem;">({{ inspection.confidence|stringformat:".1%" }})</div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="p-2 rounded bg-light border">
+                        <div class="stat-label mb-1">Defect Prob.</div>
+                        <div class="h5 fw-bold mb-0 text-dark">
+                            {{ inspection.defect_probability|floatformat:4 }}
+                        </div>
+                        <div class="text-muted" style="font-size: 0.72rem;">Threshold 0.50</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-2 rounded bg-light border small text-muted" style="font-size: 0.8rem;">
+                <i class="bi bi-lock-fill text-secondary me-1"></i>
+                <strong>INOVEX Immutability Governance:</strong> These original AI vision values are permanently preserved and cannot be overwritten.
+            </div>
+        </div>
+
+        <!-- Supervisor Review Form -->
+        <div class="stat-card p-4">
+            <div class="pb-2 mb-3 border-bottom">
+                <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                    <i class="bi bi-pencil-square text-warning"></i> Quality Supervisor Audit Decision
+                </h6>
+            </div>
+
+            <form method="post" novalidate id="supervisorReviewForm">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2 small mb-3">
+                        {% for error in form.non_field_errors %}
+                            <div><i class="bi bi-exclamation-circle me-1"></i> {{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- Decision Selection -->
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold text-secondary mb-2">
+                        Audit Decision <span class="text-danger">*</span>
+                    </label>
+                    <div class="d-flex flex-column gap-2">
+                        {% for radio in form.decision %}
+                            <label class="form-check p-2 ps-4 border rounded bg-light d-flex align-items-center cursor-pointer m-0">
+                                {{ radio.tag }}
+                                <span class="form-check-label fw-semibold ms-2 small text-dark">
+                                    {{ radio.choice_label }}
+                                </span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                    {% if form.decision.errors %}
+                        <div class="text-danger small mt-1">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ form.decision.errors.0 }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Optional Review Notes -->
+                <div class="mb-3">
+                    <label for="{{ form.notes.id_for_label }}" class="form-label small fw-semibold text-secondary">
+                        Review Comments / Defect Observations <span class="text-muted fw-normal">(Optional)</span>
+                    </label>
+                    {{ form.notes }}
+                    {% if form.notes.errors %}
+                        <div class="text-danger small mt-1">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ form.notes.errors.0 }}
+                        </div>
+                    {% endif %}
+                    <div class="form-text small" style="font-size: 0.78rem;">Document surface anomalies, edge burrs, scratches, or quality rationale.</div>
+                </div>
+
+                {% if inspection.is_reviewed %}
+                    <div class="p-2 rounded bg-light border mb-3 small" style="font-size: 0.8rem;">
+                        <div class="fw-semibold text-dark mb-1">Previous Review Information:</div>
+                        <div class="text-muted">
+                            Reviewed by <strong>@{{ inspection.reviewed_by.username }}</strong> on {{ inspection.reviewed_at|date:"Y-m-d H:i:s" }}.
+                            Final Classification: <strong>{{ inspection.reviewed_class }}</strong> ({{ inspection.get_supervisor_decision_display }}).
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+                    <a href="{% url 'supervisor_dashboard' %}" class="btn-saas-secondary btn-saas-sm">
+                        Cancel
+                    </a>
+                    <button type="submit" class="btn-saas-primary btn-saas-sm fw-semibold" id="submitReviewBtn">
+                        <i class="bi bi-check-circle-fill me-1"></i> Save Supervisor Audit
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}SOP Viewer — {{ doc_id }} (Page {{ page_num }}) — INOVEX{% endblock %}
+{% block page_title %}Interactive SOP Evidence Viewer{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0 h-100 d-flex flex-column" style="min-height: calc(100vh - 120px);">
+
+    <!-- Top Navigation Bar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-3 border-bottom gap-2">
+        <div class="d-flex align-items-center gap-3">
+            {% if incident_id %}
+            <a href="{% url 'incidents:incident_detail' incident_id %}" class="btn btn-outline-secondary btn-saas-sm">
+                <i class="bi bi-arrow-left me-1"></i>Back to Incident {{ incident_id }}
+            </a>
+            {% else %}
+            <a href="{% url 'incidents:incident_list' %}" class="btn btn-outline-secondary btn-saas-sm">
+                <i class="bi bi-arrow-left me-1"></i>Back to Incidents
+            </a>
+            {% endif %}
+            <div>
+                <h5 class="mb-0 fw-bold text-dark">
+                    <i class="bi bi-file-earmark-ruled text-primary me-2"></i>{{ doc_id }}
+                    <span class="badge bg-secondary-subtle text-secondary border font-monospace ms-2" style="font-size: 0.75rem;">Revision {{ revision }}</span>
+                </h5>
+                <div class="text-muted small">Standard Operating Procedure Reference &bull; File: <span class="font-monospace text-dark">{{ filename }}</span></div>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2">
+                <i class="bi bi-bookmark-check me-1"></i>Cited Page: {{ page_num }}
+            </span>
+            <a href="{% url 'incidents:serve_sop_pdf' filename %}" class="btn btn-outline-primary btn-saas-sm" target="_blank">
+                <i class="bi bi-box-arrow-up-right me-1"></i>Raw PDF Stream
+            </a>
+        </div>
+    </div>
+
+    <!-- Split Viewer Grid -->
+    <div class="row g-3 flex-grow-1">
+
+        <!-- Left Column: Procedural Evidence & Citation Info -->
+        <div class="col-12 col-lg-4 d-flex flex-column gap-3">
+
+            <div class="card border-0 shadow-sm flex-grow-1">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-quote text-primary me-2"></i>Procedural Evidence Passage</h6>
+                </div>
+                <div class="card-body">
+                    {% if passage %}
+                    <div class="p-3 bg-light rounded border-start border-4 border-primary mb-3">
+                        <div class="text-muted small fw-bold text-uppercase mb-2" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                            <i class="bi bi-check2-all text-success me-1"></i>Cited Procedural Passage (Page {{ page_num }}):
+                        </div>
+                        <p class="mb-0 text-dark fst-italic" style="font-size: 0.92rem; line-height: 1.5;">
+                            "{{ passage }}"
+                        </p>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info py-2 small border mb-3">
+                        Viewing whole document. Navigate to page {{ page_num }} in the PDF preview pane on the right.
+                    </div>
+                    {% endif %}
+
+                    <div class="border rounded p-3 bg-white mb-3">
+                        <h6 class="fw-bold text-dark small mb-2">Audit Information</h6>
+                        <table class="table table-sm table-borderless mb-0" style="font-size: 0.82rem;">
+                            <tr>
+                                <td class="text-muted ps-0">Document ID:</td>
+                                <td class="font-monospace fw-bold text-dark">{{ doc_id }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted ps-0">Revision:</td>
+                                <td class="font-monospace text-dark">Rev {{ revision }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted ps-0">PDF Filename:</td>
+                                <td class="font-monospace text-dark">{{ filename }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted ps-0">1-Based Page:</td>
+                                <td class="font-monospace fw-bold text-primary">Page {{ page_num }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted ps-0">Verified Integrity:</td>
+                                <td class="text-success"><i class="bi bi-shield-check me-1"></i>Cryptographically Verified</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div class="text-muted" style="font-size: 0.78rem;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        The text shown above is extracted directly from page {{ page_num }} of the official PDF standard operating procedure and is immutable.
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Interactive Embedded PDF Viewer -->
+        <div class="col-12 col-lg-8">
+            <div class="card border-0 shadow-sm h-100" style="min-height: 600px;">
+                <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
+                    <span class="small fw-semibold text-dark">
+                        <i class="bi bi-file-pdf text-danger me-1"></i>Document Stream: {{ filename }} (Navigated to Page {{ page_num }})
+                    </span>
+                    <span class="text-muted small">Standard ISO 9001:2015 Operating Procedure</span>
+                </div>
+                <div class="card-body p-0" style="height: calc(100% - 40px); min-height: 580px;">
+                    <iframe src="{% url 'incidents:serve_sop_pdf' filename %}#page={{ page_num }}&zoom=100"
+                            width="100%"
+                            height="100%"
+                            style="border: none; min-height: 600px; display: block;"
+                            title="SOP PDF Viewer">
+                        <div class="p-4 text-center text-muted">
+                            <p>PDF preview is not supported by your browser engine.</p>
+                            <a href="{% url 'incidents:serve_sop_pdf' filename %}" class="btn btn-primary btn-sm" target="_blank">
+                                <i class="bi bi-download me-1"></i>Download {{ filename }}
+                            </a>
+                        </div>
+                    </iframe>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

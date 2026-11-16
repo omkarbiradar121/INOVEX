@@ -1,0 +1,270 @@
+{% extends 'base.html' %}
+
+{% block title %}Model Performance — INOVEX{% endblock %}
+{% block page_title %}Model Performance{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+        <h1 class="page-title">Vision Model Performance Benchmark</h1>
+        <p class="page-subtitle">Systematic evaluation of <strong>BIT-PLATE-CV-1.0</strong> against 60 standardized test plates (30 Normal, 30 Defective)</p>
+    </div>
+    <div class="d-flex gap-2">
+        <form method="post" action="{% url 'execute_model_evaluation' %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn-saas-primary btn-saas-sm">
+                <i class="bi bi-play-circle-fill me-1"></i> Run Benchmark Evaluation (60 Samples)
+            </button>
+        </form>
+    </div>
+</div>
+
+{% if latest_run %}
+    <!-- Headline Benchmark Metrics -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Overall Accuracy</div>
+                <div class="stat-value text-primary">{{ latest_run.accuracy_pct }}</div>
+                <div class="stat-meta">(TP + TN) / Total</div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Defect Recall</div>
+                <div class="stat-value text-success">{{ latest_run.defect_recall_pct }}</div>
+                <div class="stat-meta">TP / (TP + FN)</div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Defect Precision</div>
+                <div class="stat-value text-info" style="color: #0284c7 !important;">{{ latest_run.defect_precision_pct }}</div>
+                <div class="stat-meta">TP / (TP + FP)</div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Benchmark Samples</div>
+                <div class="stat-value text-dark">{{ latest_run.total_samples }}</div>
+                <div class="stat-meta">30 Normal &bull; 30 Defective</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confusion Matrix Card -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="stat-card h-100 p-4">
+                <div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom">
+                    <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-grid-3x3 text-primary"></i> Confusion Matrix
+                    </h6>
+                    <span class="badge-clean badge-clean-neutral font-monospace">Order: Normal, Defective</span>
+                </div>
+
+                <p class="small text-muted mb-3" style="font-size: 0.82rem;">
+                    Confusion matrix evaluated on untampered local classifier outputs before any human supervisor audit.
+                    Rows represent ground truth; columns represent AI predictions.
+                </p>
+
+                <div class="table-responsive mb-3">
+                    <table class="table table-bordered text-center align-middle mb-0" style="border-color: #e2e8f0;">
+                        <thead>
+                            <tr class="bg-light">
+                                <th rowspan="2" class="align-middle text-muted small fw-semibold" style="width: 25%; background-color: #f8fafc;">Actual Label</th>
+                                <th colspan="2" class="fw-bold small py-2" style="background-color: #f0f9ff; color: #0284c7;">Predicted Label</th>
+                            </tr>
+                            <tr class="small bg-light">
+                                <th style="width: 37.5%; background-color: #f8fafc;" class="fw-semibold text-secondary">Normal</th>
+                                <th style="width: 37.5%; background-color: #f8fafc;" class="fw-semibold text-secondary">Defective</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th class="text-start ps-3 fw-semibold small text-secondary" style="background-color: #f8fafc;">Actual: Normal</th>
+                                <td class="py-3" style="background-color: #f0fdf4;">
+                                    <div class="h3 fw-bold text-success mb-1">{{ latest_run.true_negatives }}</div>
+                                    <span class="badge-clean badge-clean-normal" style="font-size: 0.7rem;">True Negative (TN)</span>
+                                </td>
+                                <td class="py-3 {% if latest_run.false_positives > 0 %}bg-danger-subtle{% else %}bg-light{% endif %}">
+                                    <div class="h3 fw-bold {% if latest_run.false_positives > 0 %}text-danger{% else %}text-muted{% endif %} mb-1">{{ latest_run.false_positives }}</div>
+                                    <span class="badge-clean badge-clean-neutral" style="font-size: 0.7rem;">False Positive (FP)</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-start ps-3 fw-semibold small text-secondary" style="background-color: #f8fafc;">Actual: Defective</th>
+                                <td class="py-3 {% if latest_run.false_negatives > 0 %}bg-danger-subtle{% else %}bg-light{% endif %}">
+                                    <div class="h3 fw-bold {% if latest_run.false_negatives > 0 %}text-danger{% else %}text-muted{% endif %} mb-1">{{ latest_run.false_negatives }}</div>
+                                    <span class="badge-clean badge-clean-neutral" style="font-size: 0.7rem;">False Negative (FN)</span>
+                                </td>
+                                <td class="py-3" style="background-color: #fef2f2;">
+                                    <div class="h3 fw-bold text-danger mb-1">{{ latest_run.true_positives }}</div>
+                                    <span class="badge-clean badge-clean-defective" style="font-size: 0.7rem;">True Positive (TP)</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Breakdown formulas -->
+                <div class="p-3 bg-light rounded border small text-muted" style="font-size: 0.8rem;">
+                    <div class="row">
+                        <div class="col-6 mb-1">
+                            <strong>True Positives (TP):</strong> {{ latest_run.true_positives }}
+                        </div>
+                        <div class="col-6 mb-1">
+                            <strong>True Negatives (TN):</strong> {{ latest_run.true_negatives }}
+                        </div>
+                        <div class="col-6">
+                            <strong>False Positives (FP):</strong> {{ latest_run.false_positives }}
+                        </div>
+                        <div class="col-6">
+                            <strong>False Negatives (FN):</strong> {{ latest_run.false_negatives }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Failure Reporting & Synthetic Dataset Caution -->
+        <div class="col-lg-6">
+            <div class="stat-card h-100 p-4 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom">
+                        <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                            <i class="bi bi-shield-exclamation text-warning"></i> Reliability &amp; Dataset Analysis
+                        </h6>
+                        <span class="badge-clean badge-clean-neutral font-monospace">{{ latest_run.model_version }}</span>
+                    </div>
+
+                    <!-- Missing / Failed Predictions Alert -->
+                    <div class="p-3 mb-3 rounded border {% if latest_run.failed_predictions > 0 %}bg-danger-subtle border-danger-subtle text-danger{% else %}bg-success-subtle border-success-subtle text-success{% endif %}">
+                        <div class="fw-bold mb-1 small">
+                            <i class="bi {% if latest_run.failed_predictions > 0 %}bi-exclamation-triangle-fill{% else %}bi-check-circle-fill{% endif %} me-1"></i>
+                            Prediction Execution Status:
+                        </div>
+                        <div class="small" style="font-size: 0.82rem;">
+                            Missing or failed predictions: <strong>{{ latest_run.failed_predictions }}</strong> out of {{ latest_run.total_samples }} samples.
+                            {% if latest_run.failed_predictions == 0 %}
+                                All 60 samples were successfully decoded, preprocessed, and classified by the local inference pipeline.
+                            {% else %}
+                                Failed predictions are explicitly reported and not silently excluded.
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Scientific Caution on Zero False Negatives -->
+                    {% if latest_run.false_negatives == 0 %}
+                        <div class="p-3 rounded border border-warning-subtle bg-warning-subtle text-dark small mb-3">
+                            <div class="fw-bold mb-1 text-warning d-flex align-items-center gap-1" style="color: #b45309 !important;">
+                                <i class="bi bi-exclamation-triangle-fill"></i> Scientific Limitation Notice:
+                            </div>
+                            <p class="mb-2" style="font-size: 0.82rem; line-height: 1.45;">
+                                The model achieves <strong>100% Defect Recall (0 False Negatives)</strong> on this benchmark.
+                                However, in visual quality inspection engineering,
+                                <strong>a zero false-negative rate on 60 synthetic sample images cannot establish real-world manufacturing reliability</strong>.
+                            </p>
+                            <ul class="mb-0 ps-3 text-muted" style="font-size: 0.8rem;">
+                                <li>Sample diversity is limited (only 60 demonstration metal plate surfaces).</li>
+                                <li>Factory line variance (ambient illumination, camera angle jitter, dust, motion blur) is not represented.</li>
+                                <li>A formal human-in-the-loop Supervisor review process remains mandatory in high-reliability production.</li>
+                            </ul>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="text-muted small pt-2 border-top" style="font-size: 0.8rem;">
+                    Evaluated by <strong>{{ latest_run.executed_by.username|default:"System Evaluation Engine" }}</strong> on {{ latest_run.executed_at|date:"Y-m-d H:i:s T" }}.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed 60-Sample Breakdown Table -->
+    <div class="card-table mb-4">
+        <div class="card-table-header">
+            <h6 class="card-table-title d-flex align-items-center gap-2">
+                <i class="bi bi-list-check text-primary"></i> All 60 Benchmark Sample Inferences
+            </h6>
+            <span class="badge-clean badge-clean-neutral font-monospace">Ground Truth vs. AI Output</span>
+        </div>
+        <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+            <table class="table-saas" style="font-size: 0.84rem;">
+                <thead class="sticky-top">
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Image Filename</th>
+                        <th>Ground Truth</th>
+                        <th>AI Predicted Class</th>
+                        <th>Confidence</th>
+                        <th class="text-end pe-3">Outcome</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in latest_run.detailed_results_json %}
+                        <tr class="{% if not item.match %}bg-danger-subtle bg-opacity-25{% endif %}">
+                            <td class="ps-3 text-muted">{{ forloop.counter }}</td>
+                            <td><code class="small text-secondary">{{ item.path }}</code></td>
+                            <td>
+                                {% if item.ground_truth == 'Defective' %}
+                                    <span class="badge-clean badge-clean-defective">Defective</span>
+                                {% else %}
+                                    <span class="badge-clean badge-clean-normal">Normal</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.predicted == 'Defective' %}
+                                    <span class="badge-clean badge-clean-defective">Defective</span>
+                                {% elif item.predicted == 'Normal' %}
+                                    <span class="badge-clean badge-clean-normal">Normal</span>
+                                {% else %}
+                                    <span class="badge-clean badge-clean-neutral">{{ item.predicted }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.confidence %}
+                                    <span class="fw-semibold text-dark">{{ item.confidence|floatformat:4 }}</span>
+                                {% else %}
+                                    &mdash;
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-3">
+                                {% if item.match %}
+                                    <span class="badge-clean badge-clean-normal">
+                                        <i class="bi bi-check-lg"></i> Correct
+                                    </span>
+                                {% else %}
+                                    <span class="badge-clean badge-clean-defective">
+                                        <i class="bi bi-x-lg"></i> Misclassified
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+{% else %}
+    <!-- Initial State: No Run Yet -->
+    <div class="stat-card text-center py-5">
+        <i class="bi bi-cpu text-primary fs-1 mb-3 d-block"></i>
+        <h4 class="fw-bold mb-2">No Benchmark Evaluation Run Yet</h4>
+        <p class="text-muted small mb-4" style="max-width: 520px; margin: 0 auto;">
+            Execute the official benchmark across all 60 supplied images (30 Normal and 30 Defective)
+            to calculate accuracy, defect recall, and the complete confusion matrix.
+        </p>
+        <form method="post" action="{% url 'execute_model_evaluation' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn-saas-primary btn-saas-sm px-4 fw-semibold">
+                <i class="bi bi-play-circle-fill me-1"></i> Execute 60-Sample Evaluation Now
+            </button>
+        </form>
+    </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Engineer Workspace — INOVEX{% endblock %}
+{% block page_title %}Engineer Workspace{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h1 class="page-title mb-0">Engineer Workspace</h1>
+            <span class="badge-clean badge-clean-neutral font-monospace">INOVEX</span>
+        </div>
+        <p class="page-subtitle mb-0">Unified operations center for manufacturing assistance, visual inspection, and quality records.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a href="{% url 'single_inspection' %}" class="btn btn-saas-primary btn-saas-sm">
+            <i class="bi bi-camera me-1"></i> New Inspection
+        </a>
+        <a href="{% url 'manufacturing_assistant' %}" class="btn btn-saas-secondary btn-saas-sm">
+            <i class="bi bi-journal-text me-1"></i> Launch Assistant
+        </a>
+    </div>
+</div>
+
+<!-- Four Metric Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-label">Total Inspections</div>
+            <div class="stat-value text-dark">{{ total_count }}</div>
+            <div class="stat-meta text-muted">Submitted by your account</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-label">Normal Parts</div>
+            <div class="stat-value text-success">{{ normal_count }}</div>
+            <div class="stat-meta text-muted">Verified defect-free</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-label">Defective Flags</div>
+            <div class="stat-value text-danger">{{ defective_count }}</div>
+            <div class="stat-meta text-muted">Awaiting or under review</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-label">Manual Queries</div>
+            <div class="stat-value text-primary">{{ history|length }}</div>
+            <div class="stat-meta text-muted">SOP &amp; alarm inquiries logged</div>
+        </div>
+    </div>
+</div>
+
+<!-- Three Primary Operational Module Cards -->
+<div class="row g-4 mb-4">
+    <!-- Module 1: Manufacturing Assistant -->
+    <div class="col-md-4">
+        <div class="workspace-card h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="workspace-icon workspace-icon-blue mb-3">
+                    <i class="bi bi-journal-text"></i>
+                </div>
+                <h2 class="h5 fw-bold text-dark mb-2">Manufacturing Assistant</h2>
+                <p class="text-secondary small mb-3">
+                    Query equipment operational limits, alarm codes (E17, E31), and SOP requirements with strictly grounded citations.
+                </p>
+            </div>
+            <a href="{% url 'manufacturing_assistant' %}" class="btn btn-saas-primary w-100 text-center fw-medium">
+                <i class="bi bi-chat-left-dots me-1"></i> Open Assistant
+            </a>
+        </div>
+    </div>
+
+    <!-- Module 2: Visual Quality Inspection -->
+    <div class="col-md-4">
+        <div class="workspace-card h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="workspace-icon workspace-icon-emerald mb-3">
+                    <i class="bi bi-camera"></i>
+                </div>
+                <h2 class="h5 fw-bold text-dark mb-2">Visual Quality Inspection</h2>
+                <p class="text-secondary small mb-3">
+                    Perform automated surface defect classification using the frozen BIT-PLATE-CV-1.0 vision model.
+                </p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'single_inspection' %}" class="btn btn-saas-primary flex-grow-1 text-center fw-medium">
+                    <i class="bi bi-camera me-1"></i> Single Inspection
+                </a>
+                <a href="{% url 'batch_upload' %}" class="btn btn-saas-secondary" title="Batch Upload">
+                    <i class="bi bi-images"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Module 3: Quality Incidents -->
+    <div class="col-md-4">
+        <div class="workspace-card h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="workspace-icon workspace-icon-purple mb-3">
+                    <i class="bi bi-shield-exclamation"></i>
+                </div>
+                <h2 class="h5 fw-bold text-dark mb-2">Quality Incidents</h2>
+                <p class="text-secondary small mb-3">
+                    Track corrective action requests, review automated SOP recommendations, and view resolution statuses.
+                </p>
+            </div>
+            <a href="{% url 'incidents:incident_list' %}" class="btn btn-saas-secondary w-100 text-center fw-medium">
+                <i class="bi bi-shield-check me-1"></i> View Incidents
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Two Activity Overview Sections -->
+<div class="row g-4 mb-4">
+    <!-- Left: Recent Inspections Table -->
+    <div class="col-lg-7">
+        <div class="card-table h-100">
+            <div class="card-table-header">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-clock-history text-secondary"></i>
+                    <h2 class="card-table-title">Recent Inspections</h2>
+                </div>
+                <a href="{% url 'engineer_history' %}" class="btn btn-saas-secondary btn-saas-sm">
+                    All History <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div class="table-responsive">
+                <table class="table-saas">
+                    <thead>
+                        <tr>
+                            <th>Inspection ID</th>
+                            <th>Product</th>
+                            <th>Prediction</th>
+                            <th>Date</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for insp in recent_inspections %}
+                        <tr>
+                            <td><code>INSP-{{ insp.inspection_id|slice:":8" }}</code></td>
+                            <td><span class="fw-medium text-dark">{{ insp.product.product_id }}</span></td>
+                            <td>
+                                {% if insp.predicted_class == 'Defective' %}
+                                <span class="badge-clean badge-clean-defective">Defective</span>
+                                {% elif insp.predicted_class == 'Normal' %}
+                                <span class="badge-clean badge-clean-normal">Normal</span>
+                                {% else %}
+                                <span class="badge-clean badge-clean-neutral">{{ insp.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="small text-muted">{{ insp.created_at|date:"M d, H:i" }}</td>
+                            <td class="text-end">
+                                <a href="{% url 'inspection_result' insp.pk %}" class="btn btn-saas-secondary btn-saas-sm">
+                                    View
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">
+                                No previous inspections submitted. Click "New Inspection" to start.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Recent Manual Inquiries -->
+    <div class="col-lg-5">
+        <div class="card-table h-100">
+            <div class="card-table-header">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-journal-check text-secondary"></i>
+                    <h2 class="card-table-title">Recent Manual Inquiries</h2>
+                </div>
+                <a href="{% url 'manufacturing_assistant' %}" class="btn btn-saas-secondary btn-saas-sm">
+                    Open Assistant <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for h in history %}
+                <div class="list-group-item p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <span class="badge bg-light text-dark border">{{ h.machine.machine_id }}</span>
+                        <a href="/api/queries/{{ h.id }}/download-pdf/" class="btn btn-saas-secondary btn-saas-sm py-0" target="_blank" title="Download Report">
+                            <i class="bi bi-file-earmark-pdf text-danger"></i> PDF
+                        </a>
+                    </div>
+                    <div class="small fw-semibold text-dark mb-1">{{ h.question }}</div>
+                    <div class="text-muted small text-truncate">{{ h.answer }}</div>
+                </div>
+                {% empty %}
+                <div class="p-4 text-center text-muted small">
+                    No manual questions recorded yet. Use the Manufacturing Assistant to query equipment manuals.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

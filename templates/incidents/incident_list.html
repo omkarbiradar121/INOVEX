@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Quality Incidents — INOVEX{% endblock %}
+{% block page_title %}Quality Incident Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- Header & Metric Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-3">
+            <div class="metric-card">
+                <div class="metric-label">Total Incidents</div>
+                <div class="metric-val text-dark">{{ stats.total }}</div>
+                <div class="metric-sub">Logged Quality Incidents</div>
+            </div>
+        </div>
+        <div class="col-12 col-md-3">
+            <div class="metric-card">
+                <div class="metric-label">Pending Review</div>
+                <div class="metric-val text-warning">{{ stats.pending }}</div>
+                <div class="metric-sub">Awaiting Supervisor Review</div>
+            </div>
+        </div>
+        <div class="col-12 col-md-3">
+            <div class="metric-card">
+                <div class="metric-label">Insufficient Evidence</div>
+                <div class="metric-val text-danger">{{ stats.insufficient }}</div>
+                <div class="metric-sub">Manual Review Required</div>
+            </div>
+        </div>
+        <div class="col-12 col-md-3">
+            <div class="metric-card">
+                <div class="metric-label">Follow-Up Approved</div>
+                <div class="metric-val text-success">{{ stats.approved }}</div>
+                <div class="metric-sub">Approved for Follow-Up</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ENGINEER SECTION: Eligible Defective Inspections -->
+    {% if user_role == 'engineer' and eligible_inspections %}
+    <div class="card mb-4 border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+            <div>
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Eligible Defective Inspections</h6>
+                <div class="text-muted small">Completed inspections flagged as Defective that qualify for Quality Incident creation</div>
+            </div>
+            <span class="badge bg-danger px-3 py-2 rounded-pill">{{ eligible_inspections|length }} Flagged</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Inspection ID</th>
+                        <th>Product</th>
+                        <th>Original AI Prediction</th>
+                        <th>Confidence</th>
+                        <th>Timestamp</th>
+                        <th>Status</th>
+                        <th class="text-end pe-4">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in eligible_inspections %}
+                    <tr>
+                        <td class="ps-4 font-monospace fw-semibold text-primary">#{{ item.inspection.id }}</td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ item.inspection.product.name }}</div>
+                            <span class="text-muted small font-monospace">{{ item.inspection.product.product_id }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                <i class="bi bi-x-circle me-1"></i>{{ item.inspection.prediction }}
+                            </span>
+                        </td>
+                        <td class="font-monospace text-muted">{{ item.inspection.confidence|floatformat:4 }}</td>
+                        <td class="text-muted small">{{ item.inspection.created_at|date:"M d, Y H:i" }}</td>
+                        <td>
+                            {% if item.has_incident %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                <i class="bi bi-check2-circle me-1"></i>Incident Created
+                            </span>
+                            {% else %}
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">
+                                <i class="bi bi-clock me-1"></i>Pending Creation
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            {% if item.has_incident %}
+                            <a href="{% url 'incidents:incident_detail' item.incident_id %}" class="btn btn-saas-secondary btn-saas-sm">
+                                <i class="bi bi-eye me-1"></i>View Incident
+                            </a>
+                            {% else %}
+                            <form method="POST" action="{% url 'incidents:incident_create' %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="inspection_id" value="{{ item.inspection.id }}">
+                                <button type="submit" class="btn btn-primary btn-saas-sm">
+                                    <i class="bi bi-plus-circle me-1"></i>Create Incident
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- INCIDENTS TABLE -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+            <div class="row g-2 align-items-center">
+                <div class="col-12 col-md-4">
+                    <h6 class="mb-0 fw-bold text-dark">
+                        <i class="bi bi-shield-exclamation text-primary me-2"></i>
+                        {% if user_role == 'engineer' %}My Quality Incidents{% elif user_role == 'supervisor' %}Quality Review Incidents{% else %}All Quality Incidents{% endif %}
+                    </h6>
+                </div>
+                <div class="col-12 col-md-8">
+                    <form method="GET" action="{% url 'incidents:incident_list' %}" class="row g-2 justify-content-md-end">
+                        <div class="col-12 col-sm-4">
+                            <input type="text" name="q" class="form-control form-control-sm" placeholder="Search Incident ID, Product..." value="{{ search_q }}">
+                        </div>
+                        <div class="col-6 col-sm-3">
+                            <select name="evidence_status" class="form-select form-select-sm" onchange="this.form.submit()">
+                                <option value="">Evidence: All</option>
+                                <option value="Sufficient" {% if evidence_filter == 'Sufficient' %}selected{% endif %}>Sufficient</option>
+                                <option value="Insufficient" {% if evidence_filter == 'Insufficient' %}selected{% endif %}>Insufficient</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-sm-3">
+                            <select name="review_status" class="form-select form-select-sm" onchange="this.form.submit()">
+                                <option value="">Review: All</option>
+                                <option value="Pending" {% if review_filter == 'Pending' %}selected{% endif %}>Pending</option>
+                                <option value="Approved for follow-up" {% if review_filter == 'Approved for follow-up' %}selected{% endif %}>Approved</option>
+                                <option value="Needs more information" {% if review_filter == 'Needs more information' %}selected{% endif %}>Needs Info</option>
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <a href="{% url 'incidents:incident_list' %}" class="btn btn-outline-secondary btn-saas-sm" title="Clear Filters">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Incident ID</th>
+                        <th>Product</th>
+                        <th>Inspection Ref</th>
+                        <th>Evidence Status</th>
+                        <th>Review Status</th>
+                        <th>Logged By</th>
+                        <th>Timestamp</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inc in incidents %}
+                    <tr>
+                        <td class="ps-4 font-monospace fw-bold text-dark">
+                            <a href="{% url 'incidents:incident_detail' inc.incident_id %}" class="text-decoration-none text-primary">
+                                {{ inc.incident_id }}
+                            </a>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ inc.product.name }}</div>
+                            <span class="text-muted small font-monospace">{{ inc.product.product_id }}</span>
+                        </td>
+                        <td>
+                            <span class="font-monospace text-muted">#{{ inc.inspection.id }}</span>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1" style="font-size: 0.7rem;">Defective</span>
+                        </td>
+                        <td>
+                            {% if inc.evidence_status == 'Sufficient' %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                <i class="bi bi-check-circle me-1"></i>Sufficient
+                            </span>
+                            {% else %}
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">
+                                <i class="bi bi-exclamation-triangle me-1"></i>Insufficient
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if inc.review_status == 'Approved for follow-up' %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                <i class="bi bi-check-all me-1"></i>Approved for follow-up
+                            </span>
+                            {% elif inc.review_status == 'Needs more information' %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                <i class="bi bi-question-circle me-1"></i>Needs more info
+                            </span>
+                            {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1">
+                                <i class="bi bi-clock me-1"></i>Pending Review
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted small">{{ inc.created_by.username }}</td>
+                        <td class="text-muted small">{{ inc.created_at|date:"M d, Y H:i" }}</td>
+                        <td class="text-end pe-4">
+                            <div class="btn-group">
+                                <a href="{% url 'incidents:incident_detail' inc.incident_id %}" class="btn btn-saas-secondary btn-saas-sm">
+                                    <i class="bi bi-eye me-1"></i>Details
+                                </a>
+                                <a href="{% url 'incidents:incident_pdf' inc.incident_id %}" class="btn btn-outline-secondary btn-saas-sm" title="Download PDF Report">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <div class="mb-2"><i class="bi bi-inbox fs-2 text-muted"></i></div>
+                            <div class="fw-semibold">No Quality Incidents Found</div>
+                            <div class="small">
+                                {% if user_role == 'engineer' %}
+                                Run a visual inspection on a defective part or check eligible inspections above to generate an incident.
+                                {% else %}
+                                No incidents match the current filter criteria.
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
